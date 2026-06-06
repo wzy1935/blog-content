@@ -1,5 +1,8 @@
 ---
-title: "Codewars Solution: Light Switch"
+title: "Codewars Solutions: Light Switch"
+description: "5 kyu — toggle switch puzzle on Codewars"
+date: 2026-06-06
+tags: [algorithm, bfs, dfs, linear-algebra]
 visible: true
 ---
 
