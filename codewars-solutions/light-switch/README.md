@@ -1,7 +1,6 @@
 ---
 title: "Codewars Solution: Light Switch"
-tags: [blog, astro, markdown, static-site]
-visible: false
+visible: true
 ---
 
 
