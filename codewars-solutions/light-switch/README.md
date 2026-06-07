@@ -66,28 +66,23 @@ true
 ```
 
 
+# Solutions
 
-# Approach
+## BFS / DFS
 
 ![image-20260606205349405](./assets/image-20260606205349405.png)
 
 It's natural to approach this with search. Taking the example above, we can start from $00000$ and treat each branch as toggling one switch. For each newly generated state, repeat the process until all reachable states have been explored.
 
-Two common traversal methods are BFS and DFS. Compress each light configuration into a single integer and use bitwise XOR to simulate toggling a switch. BFS uses a queue: start from initial state $0$, dequeue states one by one, try toggling each switch, and enqueue any unvisited new states until the target state $2^n-1$ is found or the queue is empty. DFS does the same but replaces the queue with a stack. If implemented correctly, both BFS and DFS will pass. But something feels off, doesn't it?
+Two common traversal methods are BFS and DFS. Compress each light configuration into a single integer and use bitwise XOR to simulate toggling a switch. Start from initial state $0$, try toggling each switch, and proceed to any unvisited new states until the target state $2^n-1$ is found or all states are exhausted.
 
-In theory, there can be up to 32 lights, which means at most $2^{32}$ (over $10^9$) states. Traversing all of them would obviously time out. So why does a plain search solve the problem?
+But there's a catch — in theory, there can be up to 32 lights, which means at most $2^{32}$ (over $10^9$) states. Traversing all of them would obviously time out. So why does a plain search still work?
 
 ![image-20260606205359500](./assets/image-20260606205359500.png)
 
-Because not all of those states are valid. Whether using BFS or DFS, we never revisit already-explored states. From the lights' perspective, there are at most $2^N$ states to explore, but the same is true from the switches' perspective. Note a key property: toggling a switch more than once is pointless, since two toggles cancel each other out. Therefore, each state in the search tree also implicitly encodes which switches have been toggled — each switch is either toggled or not. So the search tree contains at most $2^M$ states. Combining both constraints, the number of states actually visited is bounded by $2^{\min(N, M)}$. For each new state, we do at most one round of expansion, giving a complexity of $O(M \cdot 2^{\min(N, M)})$.
+Because not all of those states are reachable. Whether using BFS or DFS, we never revisit already-explored states. From the lights' perspective, there are at most $2^N$ states to explore, but the same is true from the switches' perspective. Note a key property: toggling a switch more than once is pointless, since two toggles cancel each other out. Therefore, each state in the search tree also implicitly encodes which switches have been toggled — each switch is either toggled or not. So the search tree contains at most $2^M$ states. Combining both constraints, the number of states actually visited is bounded by $2^{\min(N, M)}$. For each new state, we do at most one round of expansion, giving a complexity of $O(M \cdot 2^{\min(N, M)})$.
 
-
-
-# Solutions
-
-## BFS
-
-The search proceeds from the initial state to the target state. Note that each light configuration is compressed into a single integer — a natural fit, since toggling a switch is equivalent to applying XOR. Hence $0$ represents the initial state and $2^n - 1$ represents the target state.
+BFS uses a queue: start from initial state $0$, dequeue states one by one, try toggling each switch, and enqueue any unvisited new states.
 
 ```python
 from collections import deque
@@ -96,19 +91,17 @@ from collections import deque
 # corresponding_lights_list:
 #   corresponding_lights_list[i] = lights controlled by switch i
 def light_switch(n, corresponding_lights_list):
-    # Step 1: convert switches into bitmasks
     switch_masks = []
     for lights in corresponding_lights_list:
         mask = 0
         for light in lights:
             mask |= (1 << light)
         switch_masks.append(mask)
-    start = 0                  # all lights off
-    target = (1 << n) - 1      # all lights on
+    start = 0
+    target = (1 << n) - 1
     if start == target:
         return True
-    
-    # Step 2: BFS
+
     queue = deque([start])
     visited = {start}
     while queue:
@@ -124,50 +117,26 @@ def light_switch(n, corresponding_lights_list):
     return False
 ```
 
-
-
-## DFS
-
-DFS follows the same approach — just replace the queue with a stack. However, you **must not use recursion**, since the state space can be deep enough to trigger Python's recursion limit.
+DFS replaces the queue with a stack — use `list` and `pop()`. **Do not use recursion**: the state space can be deep enough to trigger Python's recursion limit.
 
 ```python
-# n: number of lights
-# corresponding_lights_list:
-#   corresponding_lights_list[i] = lights controlled by switch i
-def light_switch(n, corresponding_lights_list):
-    # Step 1: convert switches into bitmasks
-    switch_masks = []
-    for lights in corresponding_lights_list:
-        mask = 0
-        for light in lights:
-            mask |= (1 << light)
-        switch_masks.append(mask)
-    start = 0                  # all lights off
-    target = (1 << n) - 1      # all lights on
-    if start == target:
+# DFS: only the differing parts — everything else is identical
+stack = [start]
+visited = {start}
+while stack:
+    state = stack.pop()
+    if state == target:
         return True
-
-    # Step 2: DFS
-    stack = [start]
-    visited = {start}
-    while stack:
-        state = stack.pop()
-        if state == target:
-            return True
-        for switch_mask in switch_masks:
-            next_state = state ^ switch_mask
-            if next_state not in visited:
-                visited.add(next_state)
-                stack.append(next_state)
-
-    return False
+    for switch_mask in switch_masks:
+        next_state = state ^ switch_mask
+        if next_state not in visited:
+            visited.add(next_state)
+            stack.append(next_state)
 ```
 
 
 
 ## Deduplication Enumeration
-
-*From community solutions (best practices / clever)*
 
 Enumerating switch states is also viable. For each switch, there are two choices — toggle or don't toggle — so with each new switch added, we can expand the existing state set. Since a set automatically deduplicates, each light configuration is kept only once, and the number of states maintained never exceeds $\min(2^N, 2^M)$. Each round expands every state in the set, for $N$ rounds total, giving a complexity of $O(N \cdot 2^{\min(N, M)})$.
 
@@ -187,8 +156,6 @@ Deduplication is essential. Without it, the algorithm degenerates into a brute-f
 
 
 ## GF(2) Gaussian Elimination
-
-*From community solutions*
 
 Let matrix $A$ represent the relationship between lights and switches, where $A_{ij}$ indicates whether switch $j$ controls light $i$. We seek a vector $\mathbf{x}$ indicating which switches to toggle, where $x_j$ denotes whether switch $j$ is toggled. Then for any light $i$, we can write the following linear equation:
 
